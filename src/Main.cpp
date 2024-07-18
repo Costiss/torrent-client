@@ -1,14 +1,14 @@
+#include <cctype>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cctype>
-#include <cstdlib>
 
 #include "lib/nlohmann/json.hpp"
 
 using json = nlohmann::json;
 
-json decode_bencoded_value(const std::string& encoded_value) {
+json decode_bencoded_value(const std::string &encoded_value) {
     if (std::isdigit(encoded_value[0])) {
         // Example: "5:hello" -> "hello"
         size_t colon_index = encoded_value.find(':');
@@ -20,18 +20,28 @@ json decode_bencoded_value(const std::string& encoded_value) {
         } else {
             throw std::runtime_error("Invalid encoded value: " + encoded_value);
         }
+    } else if (encoded_value[0] == 'i') {
+        size_t e_index = encoded_value.find('e');
+        if (e_index != std::string::npos) {
+            std::string number_string = encoded_value.substr(1, e_index);
+            int64_t number = std::atoll(number_string.c_str());
+            return json(number);
+        } else {
+            throw std::runtime_error("Invalid encoded value: " + encoded_value);
+        }
     } else {
         throw std::runtime_error("Unhandled encoded value: " + encoded_value);
     }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     // Flush after every std::cout / std::cerr
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " decode <encoded_value>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " decode <encoded_value>"
+                  << std::endl;
         return 1;
     }
 
@@ -39,7 +49,8 @@ int main(int argc, char* argv[]) {
 
     if (command == "decode") {
         if (argc < 3) {
-            std::cerr << "Usage: " << argv[0] << " decode <encoded_value>" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " decode <encoded_value>"
+                      << std::endl;
             return 1;
         }
 
