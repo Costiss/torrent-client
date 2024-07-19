@@ -10,9 +10,16 @@
 
 #include "../nlohmann/json.hpp"
 
+using json = nlohmann::json;
+json decode_bencoded_string(std::string const &input, size_t &position);
+json decode_bencoded_integer(std::string const &input, size_t &position);
+json decode_bencoded_list(std::string const &input, size_t &position);
+json decode_bencoded_value(const std::string &encoded_value, size_t &position);
+json decode_bencoded_value(const std::string &encoded_value);
+
 bool is_bencoded_string(std::string const &input) { return std::isdigit(input[0]); };
 
-std::string decode_bencoded_string(std::string const &input, size_t &position) {
+json decode_bencoded_string(std::string const &input, size_t &position) {
     if (!std::isdigit(input[position])) {
         throw std::runtime_error("bencoded value is not a string: " + input);
     }
@@ -30,7 +37,7 @@ std::string decode_bencoded_string(std::string const &input, size_t &position) {
 
 bool is_bencoded_integer(std::string const &input) { return input[0] == 'i'; };
 
-int64_t decode_bencoded_integer(std::string const &input, size_t &position) {
+json decode_bencoded_integer(std::string const &input, size_t &position) {
     if (input[position] != 'i') {
         throw std::runtime_error("bencoded value is not a integer: " + input);
     }
@@ -45,30 +52,76 @@ int64_t decode_bencoded_integer(std::string const &input, size_t &position) {
     }
 };
 
-nlohmann::json decode_bencoded_list(std::string const &input, size_t &position) {
+json decode_bencoded_list(std::string const &input, size_t &position) {
     if (input[position] != 'l') {
         throw std::runtime_error("bencoded value is not a list: " + input);
     }
-    nlohmann::json array = nlohmann::json::array();
+    json array = json::array();
 
     position = position + 1;
     while (position < input.size()) {
         char current = input[position];
-
-        if (std::isdigit(current)) {
-            std::string string_value = decode_bencoded_string(input, position);
-            array.push_back(string_value);
-        } else if (current == 'i') {
-            int64_t integer_value = decode_bencoded_integer(input, position);
-            array.push_back(integer_value);
-        } else if (current == 'l') {
-            nlohmann::json list_value = decode_bencoded_list(input, position);
-            array.push_back(list_value);
-        } else if (current == 'e') {
-            position = position + 1;
+        if (current == 'e')
             break;
-        }
+
+        json value = decode_bencoded_value(input, position);
+        array.push_back(value);
     };
+    position = position + 1;
 
     return array;
+}
+
+json decode_bencoded_dict(std::string const &input, size_t &position) {
+    if (input[position] != 'd') {
+        throw std::runtime_error("bencoded value is not a dictionary: " + input);
+    }
+    json dict = json::object_t();
+
+    position = position + 1;
+    while (position < input.size()) {
+        char current = input[position];
+        if (current == 'e')
+            break;
+
+        std::string key = decode_bencoded_string(input, position);
+        json value = decode_bencoded_value(input, position);
+        dict[key] = value;
+    }
+    position = position + 1;
+
+    return dict;
+}
+
+json decode_bencoded_value(const std::string &encoded_value, size_t &position) {
+    if (std::isdigit(encoded_value[position])) {
+        std::string str = decode_bencoded_string(encoded_value, position);
+        return json(str);
+    } else if (encoded_value[position] == 'i') {
+        int64_t number = decode_bencoded_integer(encoded_value, position);
+        return json(number);
+    } else if (encoded_value[position] == 'l') {
+        return decode_bencoded_list(encoded_value, position);
+    } else if (encoded_value[position] == 'd') {
+        return decode_bencoded_dict(encoded_value, position);
+    } else {
+        throw std::runtime_error("Unhandled encoded value: " + encoded_value);
+    }
+}
+
+json decode_bencoded_value(const std::string &encoded_value) {
+    size_t position = 0;
+    if (std::isdigit(encoded_value[position])) {
+        std::string str = decode_bencoded_string(encoded_value, position);
+        return json(str);
+    } else if (encoded_value[position] == 'i') {
+        int64_t number = decode_bencoded_integer(encoded_value, position);
+        return json(number);
+    } else if (encoded_value[position] == 'l') {
+        return decode_bencoded_list(encoded_value, position);
+    } else if (encoded_value[position] == 'd') {
+        return decode_bencoded_dict(encoded_value, position);
+    } else {
+        throw std::runtime_error("Unhandled encoded value: " + encoded_value);
+    }
 }

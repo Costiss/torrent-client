@@ -9,22 +9,6 @@
 
 using json = nlohmann::json;
 
-json decode_bencoded_value(const std::string &encoded_value) {
-    size_t position = 0;
-    if (std::isdigit(encoded_value[position])) {
-        std::string str = decode_bencoded_string(encoded_value, position);
-        return json(str);
-    } else if (encoded_value[position] == 'i') {
-        int64_t number = decode_bencoded_integer(encoded_value, position);
-        return json(number);
-    } else if (encoded_value[position] == 'l') {
-        auto list = decode_bencoded_list(encoded_value, position);
-        return list;
-    } else {
-        throw std::runtime_error("Unhandled encoded value: " + encoded_value);
-    }
-}
-
 int main(int argc, char *argv[]) {
     // Flush after every std::cout / std::cerr
     std::cout << std::unitbuf;
